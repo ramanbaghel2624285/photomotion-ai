@@ -1,69 +1,159 @@
-$("generateBtn").onclick = async () => {
-  if (!$("photoInput").files.length) {
-    showToast("Please choose a photo first.");
-    return;
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoMotion.ai — AI Image to Video</title>
+<meta name="description" content="Turn images into social-ready AI videos for Instagram, YouTube, TikTok, Facebook and more.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#050816;--panel:#0b1225;--panel2:#0e1830;--text:#f7f8ff;--muted:#9aa9c3;--line:#243250;--a:#17c8ff;--b:#a855f7;--c:#ff2bd6}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 80% 10%,#211050 0,transparent 28%),var(--bg);color:var(--text);line-height:1.5}
+a{text-decoration:none;color:inherit}.nav{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:16px 5%;background:rgba(5,8,22,.82);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.08)}
+.logo{font-weight:900;font-size:22px}.logo span{background:linear-gradient(90deg,var(--a),var(--c));-webkit-background-clip:text;color:transparent}
+.navlinks{display:flex;gap:26px;color:#cbd5e8;font-size:14px}.actions{display:flex;gap:9px}.btn{border:0;border-radius:14px;padding:12px 18px;font-weight:800;cursor:pointer;color:white}.outline{background:transparent;border:1px solid #56637f}.gradient{background:linear-gradient(100deg,var(--a),var(--b),var(--c));box-shadow:0 10px 35px rgba(168,85,247,.22)}
+.hero{max-width:1250px;margin:auto;padding:76px 5% 58px;display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center}
+.badge{display:inline-flex;padding:8px 13px;border:1px solid #33416b;border-radius:999px;background:#101832;color:#cfd7ff;font-weight:800;font-size:12px}
+h1{font-size:clamp(44px,6vw,76px);line-height:.99;letter-spacing:-4px;margin:18px 0}.grad{background:linear-gradient(90deg,#fff 15%,#7fdfff 42%,#bf72ff 78%,#ff5bdc);-webkit-background-clip:text;color:transparent}
+.lead{font-size:18px;color:#afbdd2;max-width:620px}.heroBtns{display:flex;gap:12px;margin:25px 0;flex-wrap:wrap}.trust{display:flex;gap:18px;flex-wrap:wrap;color:#b9c6da;font-size:13px}.trust span{display:inline-flex;gap:7px;align-items:center}
+.mock{border:1px solid #314267;background:linear-gradient(150deg,#111c36,#070c1b);border-radius:30px;padding:20px;box-shadow:0 35px 100px rgba(0,0,0,.4)}.videoMock{aspect-ratio:16/10;border-radius:22px;overflow:hidden;background:linear-gradient(145deg,#1b3760,#5b1e78 55%,#0b1327);position:relative;display:flex;align-items:center;justify-content:center}.videoMock img{width:100%;height:100%;object-fit:cover;display:none}.videoMock .overlay{position:absolute;inset:auto 14px 14px;display:flex;justify-content:space-between;align-items:center}.chip{padding:8px 11px;border-radius:10px;background:rgba(4,7,18,.72);border:1px solid rgba(255,255,255,.12);font-size:12px;font-weight:800}.play{width:62px;height:62px;border-radius:50%;background:#fff;color:#10162a;display:grid;place-items:center;font-size:22px}
+.section{max-width:1250px;margin:auto;padding:68px 5%}.sectionHead{display:flex;justify-content:space-between;gap:20px;align-items:end}.section h2{font-size:38px;letter-spacing:-1.5px}.muted{color:var(--muted)}
+.featureGrid,.templateGrid,.pricingGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:28px}.card,.price{background:linear-gradient(145deg,#0c152b,#080f20);border:1px solid var(--line);border-radius:22px;padding:24px}.icon{font-size:27px}.card h3{margin:10px 0 5px}.card p{color:var(--muted);font-size:14px}
+.platformWrap{background:#f5f7fb;color:#0c1530}.platformWrap .section{padding-top:65px}.platformGrid{display:grid;grid-template-columns:1fr 1.5fr;gap:35px;align-items:center}.platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.platform{background:white;border:1px solid #d9dfeb;border-radius:17px;padding:16px;text-align:center;cursor:pointer;transition:.2s}.platform:hover,.platform.active{border-color:#8b5cf6;box-shadow:0 8px 25px rgba(66,43,120,.12);transform:translateY(-2px)}.platform .picon{font-size:26px}.platform small{display:block;color:#68758c;margin-top:3px}
+.createSection{background:linear-gradient(180deg,#050816,#090f21)}.creator{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.panel{background:#0b1429;border:1px solid var(--line);border-radius:24px;padding:22px}.drop{border:1.5px dashed #566c9d;border-radius:20px;padding:30px;text-align:center;background:#0a1224}.drop input{display:none}.drop label{display:inline-block;margin-top:16px}.thumb{max-height:220px;max-width:100%;border-radius:16px;display:none;margin:18px auto 0}.controls{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}.control label{display:block;color:#9fb0c9;font-size:12px;margin-bottom:7px}.control select,.control input{width:100%;padding:12px;border-radius:12px;border:1px solid #31405d;background:#0b1327;color:white}.full{grid-column:1/-1}.platformPills{display:flex;flex-wrap:wrap;gap:8px}.pill{padding:9px 12px;border:1px solid #33425f;border-radius:999px;background:#0b1429;color:#dce5f5;cursor:pointer;font-size:13px}.pill.active{border-color:#a855f7;background:#1c1634}
+.templates .template{overflow:hidden}.template img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:14px}.template h3{margin-top:10px}.template button{margin-top:12px}
+.price.featured{border-color:#a855f7;box-shadow:0 0 0 1px rgba(168,85,247,.18),0 20px 60px rgba(168,85,247,.12)}.amount{font-size:36px;font-weight:900;margin:8px 0}.price ul{list-style:none;color:#bac7da}.price li{margin:8px 0}.price button{width:100%;margin-top:12px}
+.cta{margin:20px 5% 60px;padding:38px;border-radius:28px;background:linear-gradient(100deg,#17256b,#6d24b6,#a51f86);display:flex;align-items:center;justify-content:space-between;gap:20px}.cta h2{font-size:32px}
+footer{border-top:1px solid #1d2b46;padding:30px 5%;display:flex;justify-content:space-between;gap:20px;color:#8090a8;font-size:13px}
+.toast{position:fixed;right:18px;bottom:18px;background:#101a30;border:1px solid #405173;padding:14px 16px;border-radius:14px;display:none;z-index:50;box-shadow:0 15px 50px rgba(0,0,0,.4)}
+@media(max-width:900px){.navlinks{display:none}.hero,.platformGrid,.creator{grid-template-columns:1fr}.featureGrid,.templateGrid,.pricingGrid{grid-template-columns:1fr 1fr}.sectionHead{align-items:start;flex-direction:column}.cta{flex-direction:column;align-items:flex-start}}
+@media(max-width:600px){.featureGrid,.templateGrid,.pricingGrid{grid-template-columns:1fr}.nav{padding:14px 4%}.hero{padding-top:45px}h1{letter-spacing:-2.5px}.controls{grid-template-columns:1fr}.platforms{grid-template-columns:repeat(2,1fr)}footer{flex-direction:column}.actions .outline{display:none}}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="logo">Photo<span>Motion</span>.ai</div>
+  <div class="navlinks"><a href="#create">Create</a><a href="#platforms">Platforms</a><a href="#templates">Templates</a><a href="#pricing">Pricing</a></div>
+  <div class="actions"><button class="btn outline" onclick="showToast('Login will be connected in the next backend step.')">Login</button><button class="btn gradient" onclick="document.getElementById('create').scrollIntoView({behavior:'smooth'})">Get Started Free →</button></div>
+</nav>
 
-  if (!selectedPlatforms.size) {
-    showToast("Select at least one platform.");
-    return;
-  }
+<main>
+<section class="hero">
+  <div>
+    <span class="badge">✨ AI-POWERED IMAGE TO VIDEO</span>
+    <h1>Turn Your Photos Into <span class="grad">Stunning Videos.</span></h1>
+    <p class="lead">Create cinematic, social-ready videos from one or multiple images. Choose your motion, style and platform — then let AI bring your photos to life.</p>
+    <div class="heroBtns"><button class="btn gradient" onclick="document.getElementById('create').scrollIntoView({behavior:'smooth'})">Create Your Video Now →</button><button class="btn outline" onclick="showToast('Demo preview ready — upload a photo below to test the interface.')">▷ Watch Demo</button></div>
+    <div class="trust"><span>⚡ Fast & Easy</span><span>✦ AI Powered</span><span>🛡️ Secure Workflow</span></div>
+  </div>
+  <div class="mock">
+    <div class="videoMock"><img id="heroPreview" alt=""><div class="play">▶</div><div class="overlay"><span class="chip">From a photo → a story</span><span class="chip">Cinematic • 9:16</span></div></div>
+  </div>
+</section>
 
-  if (remaining <= 0) {
-    showToast("Your 7 free generations are used.");
-    return;
-  }
+<section class="section">
+  <div class="sectionHead"><div><h2>Everything creators need</h2><p class="muted">A focused AI workspace built around image-to-video creation.</p></div></div>
+  <div class="featureGrid">
+    <div class="card"><div class="icon">🖼️</div><h3>Image → Video</h3><p>Animate one photo or combine multiple photos into one story.</p></div>
+    <div class="card"><div class="icon">🎥</div><h3>AI Camera Motion</h3><p>Zoom, pan, tracking, cinematic movement and adjustable motion strength.</p></div>
+    <div class="card"><div class="icon">🎨</div><h3>Creative Controls</h3><p>Choose realistic, cinematic, 3D, anime and other visual directions.</p></div>
+    <div class="card"><div class="icon">📱</div><h3>All Social Platforms</h3><p>Prepare vertical, square and landscape outputs for major platforms.</p></div>
+    <div class="card"><div class="icon">✨</div><h3>AI Tools</h3><p>Image enhancement, background tools, voiceover and subtitles can live here.</p></div>
+    <div class="card"><div class="icon">👤</div><h3>Creator Dashboard</h3><p>Manage generations, saved projects, credits and downloads.</p></div>
+  </div>
+</section>
 
-  const btn = $("generateBtn");
-  const originalText = btn.textContent;
+<section class="platformWrap" id="platforms">
+  <div class="section">
+    <div class="platformGrid">
+      <div><p style="color:#5b5cf0;font-weight:900;font-size:13px">CREATE FOR EVERY PLATFORM</p><h2 style="margin:8px 0 12px">One Video. All Platforms.</h2><p style="color:#647086">Create once, then prepare your content for the social platforms your audience uses.</p><button class="btn gradient" style="margin-top:18px" onclick="selectAllPlatforms()">Create for All Platforms →</button></div>
+      <div class="platforms" id="platformsGrid"></div>
+    </div>
+  </div>
+</section>
 
-  btn.disabled = true;
-  btn.textContent = "⏳ Preparing video...";
+<section class="section templates" id="templates">
+  <div class="sectionHead"><div><p style="color:#8b5cf6;font-weight:900;font-size:13px">AI VIDEO TEMPLATES</p><h2>Ready-to-Use Templates</h2><p class="muted">Start with a style made for common creator workflows.</p></div></div>
+  <div class="templateGrid" id="templateGrid"></div>
+</section>
 
-  try {
-    const formData = new FormData();
+<section class="section createSection" id="create">
+  <div class="sectionHead"><div><p style="color:#61dcff;font-weight:900;font-size:13px">CREATE YOUR VIDEO</p><h2>Bring a photo to life.</h2><p class="muted">Your first 7 generations are free in the planned product.</p></div></div>
+  <div class="creator">
+    <div class="panel">
+      <div class="drop">
+        <div style="font-size:44px">📷</div><h3>Upload your image</h3><p class="muted">JPG, PNG or WEBP</p>
+        <label class="btn gradient" for="photoInput">Choose Photo</label><input id="photoInput" type="file" accept="image/png,image/jpeg,image/webp">
+        <div id="fileName" class="muted" style="margin-top:12px">No photo selected</div>
+        <img id="thumb" class="thumb" alt="Selected photo">
+      </div>
+      <div class="controls">
+        <div class="control"><label>Motion Style</label><select id="style"><option>Cinematic</option><option>Realistic</option><option>3D Motion</option><option>Anime</option><option>Cartoon</option></select></div>
+        <div class="control"><label>Duration</label><select id="duration"><option>5 seconds</option><option>10 seconds</option><option>15 seconds</option></select></div>
+        <div class="control"><label>Camera</label><select id="camera"><option>Cinematic</option><option>Zoom In</option><option>Pan Right</option><option>Tracking</option><option>Close-up</option><option>Wide</option></select></div>
+        <div class="control"><label>Motion Strength</label><select id="motion"><option>Natural</option><option>Subtle</option><option>Dynamic</option><option>Strong</option></select></div>
+        <div class="control full"><label>Prompt</label><input id="prompt" placeholder="Describe the motion you want..."></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Choose Platforms</h3><p class="muted" style="font-size:13px;margin:5px 0 15px">Select one or more outputs.</p>
+      <div class="platformPills" id="platformPills"></div>
+      <button class="btn gradient" id="generateBtn" style="width:100%;margin-top:22px;padding:15px">✨ Generate AI Video</button>
+      <div style="text-align:center;margin-top:15px;color:#aebbd0">🎁 <b id="remaining">7</b> free generations remaining</div>
+      <div class="card" style="margin-top:20px"><h3>Quick workflow</h3><p class="muted">1. Upload → 2. Pick style & platforms → 3. Generate → 4. Download & share.</p></div>
+    </div>
+  </div>
+</section>
 
-    formData.append("photo", $("photoInput").files[0]);
-    formData.append("userId", "demo-user");
-    formData.append("style", $("style").value);
-    formData.append("duration", $("duration").value);
-    formData.append("camera", $("camera").value);
-    formData.append("motion", $("motion").value);
-    formData.append("prompt", $("prompt").value);
-    formData.append(
-      "platforms",
-      JSON.stringify([...selectedPlatforms])
-    );
+<section class="section" id="pricing">
+  <div class="sectionHead"><div><h2>Simple pricing</h2><p class="muted">Start with 7 free generations, then choose a plan as your usage grows.</p></div></div>
+  <div class="pricingGrid">
+    <div class="price"><h3>Free</h3><div class="amount">₹0</div><ul><li>✓ 7 generations</li><li>✓ Social formats</li><li>✓ Basic motion controls</li></ul><button class="btn gradient">Start Free</button></div>
+    <div class="price featured"><h3>Pro</h3><div class="amount">₹299 <small style="font-size:13px;color:#aebbd0">/ month</small></div><ul><li>✓ 50 generations / month</li><li>✓ Advanced motion controls</li><li>✓ HD output (planned)</li></ul><button class="btn gradient">Choose Pro</button></div>
+    <div class="price"><h3>Premium</h3><div class="amount">₹699 <small style="font-size:13px;color:#aebbd0">/ month</small></div><ul><li>✓ 200 generations / month</li><li>✓ Priority generation (planned)</li><li>✓ More creator tools</li></ul><button class="btn gradient">Choose Premium</button></div>
+  </div>
+</section>
 
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      body: formData
-    });
+<div class="cta"><div><h2>Ready to bring your photos to life?</h2><p style="color:#e5ddff">Create your first AI video with 7 free generations.</p></div><button class="btn" style="background:white;color:#54208d" onclick="document.getElementById('create').scrollIntoView({behavior:'smooth'})">Get Started Free →</button></div>
+</main>
+<footer><span>© 2026 PhotoMotion.ai</span><span>Privacy · Terms · Contact</span></footer>
+<div class="toast" id="toast"></div>
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Generation failed.");
-    }
-
-    if (data.video?.videoUrl) {
-      remaining = data.freeGenerationsRemaining;
-      $("remaining").textContent = remaining;
-
-      showToast("🎉 Your AI video is ready!");
-
-      window.open(data.video.videoUrl, "_blank");
-    } else {
-      showToast(
-        "Request received. AI video provider is not configured yet."
-      );
-    }
-
-  } catch (error) {
-    console.error(error);
-    showToast(error.message || "Something went wrong.");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
-  }
+<script>
+const platforms = [
+  ["Instagram Reels","9:16","📸"],["YouTube Shorts","9:16","▶️"],["YouTube","16:9","📺"],
+  ["Facebook","1:1","f"],["TikTok","9:16","♪"],["Snapchat","9:16","👻"],
+  ["Pinterest","2:3","P"],["LinkedIn","1:1","in"],["X","16:9","𝕏"]
+];
+const templates = [
+  ["Cinematic Portrait","🎬","cinematic portrait with smooth camera movement"],
+  ["Travel Reel","✈️","dynamic travel reveal with gentle camera motion"],
+  ["Product Ad","🛍️","premium product showcase with clean movement"],
+  ["Fashion Reel","👗","stylish fashion motion with confident camera tracking"],
+  ["Photo Slideshow","🖼️","smooth multi-photo story with elegant transitions"],
+  ["Music Reel","🎵","rhythmic visual motion designed for short-form content"]
+];
+const selectedPlatforms = new Set(["Instagram Reels"]);
+let remaining = 7;
+const $ = id => document.getElementById(id);
+function showToast(msg){const t=$("toast");t.textContent=msg;t.style.display="block";clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.style.display="none",3000)}
+function renderPlatforms(){
+  $("platformsGrid").innerHTML=platforms.map(p=>`<div class="platform"><div class="picon">${p[2]}</div><b>${p[0]}</b><small>${p[1]}</small></div>`).join("");
+  $("platformPills").innerHTML=platforms.map(p=>`<button class="pill ${selectedPlatforms.has(p[0])?'active':''}" data-platform="${p[0]}">${p[2]} ${p[0]}</button>`).join("");
+  document.querySelectorAll(".pill").forEach(btn=>btn.onclick=()=>{const n=btn.dataset.platform;if(selectedPlatforms.has(n))selectedPlatforms.delete(n);else selectedPlatforms.add(n);btn.classList.toggle("active")});
+}
+function selectAllPlatforms(){platforms.forEach(p=>selectedPlatforms.add(p[0]));renderPlatforms();showToast("All platform outputs selected.");$("create").scrollIntoView({behavior:"smooth"})}
+function renderTemplates(){$("templateGrid").innerHTML=templates.map(t=>`<div class="card template"><div style="height:130px;border-radius:14px;background:linear-gradient(135deg,#182d52,#7c2b8d);display:grid;place-items:center;font-size:54px">${t[1]}</div><h3>${t[0]}</h3><p class="muted">${t[2]}</p><button class="btn outline" onclick="useTemplate('${t[2].replaceAll("'","")}')">Use Template</button></div>`).join("")}
+function useTemplate(text){$("prompt").value=text;showToast("Template added to your prompt.");$("create").scrollIntoView({behavior:"smooth"})}
+$("photoInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;$("fileName").textContent=f.name;const url=URL.createObjectURL(f);$("thumb").src=url;$("thumb").style.display="block";$("heroPreview").src=url;$("heroPreview").style.display="block";$("heroPreview").parentElement.querySelector(".play").style.display="none"});
+$("generateBtn").onclick=()=>{
+  if(!$("photoInput").files.length){showToast("Please choose a photo first.");return}
+  if(!selectedPlatforms.size){showToast("Select at least one platform.");return}
+  if(remaining<=0){showToast("Your 7 free generations are used. Connect billing to continue.");return}
+  remaining--; $("remaining").textContent=remaining;
+  showToast("Demo request created. Connect an AI video provider on the backend for real generation.");
 };
+renderPlatforms();renderTemplates();
+</script>
+</body>
+</html>
