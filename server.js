@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import "dotenv/config";
-import crypto from "crypto";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { fal } from "@fal-ai/client";
@@ -14,7 +14,9 @@ const app = express();
 
 const upload = multer({
   dest: "uploads/",
-  limits: { fileSize: 15 * 1024 * 1024 }
+  limits: {
+    fileSize: 15 * 1024 * 1024
+  }
 });
 
 app.use(cors());
@@ -46,25 +48,29 @@ app.get("/api/usage/:userId", (req, res) => {
 });
 
 app.post("/api/generate", upload.single("photo"), async (req, res) => {
+  let uploadedFile = null;
+
   try {
     const userId = req.body.userId || "demo-user";
     const user = getUser(userId);
 
     if (!req.file) {
       return res.status(400).json({
-        error: "Photo is required."
+        error: "Please upload a photo."
       });
     }
 
+    uploadedFile = req.file.path;
+
     if (user.plan === "free" && user.freeGenerations <= 0) {
       return res.status(402).json({
-        error: "Your 7 free generations are used. Please upgrade."
+        error: "Your 7 free generations are used."
       });
     }
 
     if (!process.env.FAL_KEY) {
       return res.status(503).json({
-        error: "AI video provider is not configured yet."
+        error: "AI provider is not configured yet."
       });
     }
 
@@ -72,32 +78,68 @@ app.post("/api/generate", upload.single("photo"), async (req, res) => {
       credentials: process.env.FAL_KEY
     });
 
-    const requestId = crypto.randomUUID();
+    const imageBuffer = fs.readFileSync(uploadedFile);
 
-    // Temporary response until the uploaded photo is connected
-    // to public file storage.
-    const request = {
-      id: requestId,
-      status: "ready",
-      prompt:
-        req.body.prompt ||
-        "Create natural cinematic motion from this image.",
-      style: req.body.style || "Cinematic",
-      camera: req.body.camera || "Cinematic",
-      motion: req.body.motion || "Natural",
-      duration: req.body.duration || "5 seconds",
-      platforms: req.body.platforms
-        ? JSON.parse(req.body.platforms)
-        : ["Instagram Reels"],
-      sourceFile: req.file.filename,
+    const imageBase64 = imageBuffer.toString("base64");
+
+    const mimeType = req.file.mimetype || "image/jpeg";
+
+    const imageDataUri =
+      `data:${mimeType};base64,${imageBase64}`;
+
+    const style = req.body.style || "Cinematic";
+    const camera = req.body.camera || "Cinematic";
+    const motion = req.body.motion || "Natural";
+
+    const prompt =
+      req.body.prompt ||
+      `Create a ${style} image-to-video animation. ` +
+      `Use ${camera} camera movement with ${motion} motion. ` +
+      `Keep the main subject natural and visually consistent.`;
+
+    const result = await fal.subscribe(
+      "fal-ai/vidu/image-to-video",
+      {
+        input: {
+          prompt: prompt.slice(0, 1500),
+          image_url: imageDataUri,
+          movement_amplitude:
+            motion === "Strong"
+              ? "large"
+              : motion === "Dynamic"
+              ? "medium"
+              : motion === "Subtle"
+              ? "small"
+              : "auto"
+        },
+        logs: true
+      }
+    );
+
+    const videoUrl = result?.data?.video?.url;
+
+    if (!videoUrl) {
+      throw new Error("AI provider did not return a video URL.");
+    }
+
+    user.freeGenerations--;
+
+    const video = {
+      id: Date.now().toString(),
+      status: "completed",
+      videoUrl,
+      prompt,
+      style,
+      camera,
+      motion,
       createdAt: new Date().toISOString()
     };
 
-    user.videos.push(request);
+    user.videos.unshift(video);
 
     res.json({
-      message: "Backend is ready for AI generation.",
-      video: request,
+      success: true,
+      video,
       freeGenerationsRemaining: user.freeGenerations
     });
 
@@ -105,8 +147,17 @@ app.post("/api/generate", upload.single("photo"), async (req, res) => {
     console.error("Generation error:", error);
 
     res.status(500).json({
-      error: "Something went wrong while preparing the video."
+      error:
+        error?.message ||
+        "Video generation failed."
     });
+
+  } finally {
+    if (uploadedFile) {
+      try {
+        fs.unlinkSync(uploadedFile);
+      } catch {}
+    }
   }
 });
 
@@ -119,7 +170,9 @@ app.get("/api/videos/:userId", (req, res) => {
 });
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(
+    path.join(__dirname, "index.html")
+  );
 });
 
 app.listen(process.env.PORT || 3000, () => {
