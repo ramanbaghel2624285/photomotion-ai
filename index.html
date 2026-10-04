@@ -147,11 +147,70 @@ function renderTemplates(){$("templateGrid").innerHTML=templates.map(t=>`<div cl
 function useTemplate(text){$("prompt").value=text;showToast("Template added to your prompt.");$("create").scrollIntoView({behavior:"smooth"})}
 $("photoInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;$("fileName").textContent=f.name;const url=URL.createObjectURL(f);$("thumb").src=url;$("thumb").style.display="block";$("heroPreview").src=url;$("heroPreview").style.display="block";$("heroPreview").parentElement.querySelector(".play").style.display="none"});
 $("generateBtn").onclick=()=>{
-  if(!$("photoInput").files.length){showToast("Please choose a photo first.");return}
-  if(!selectedPlatforms.size){showToast("Select at least one platform.");return}
-  if(remaining<=0){showToast("Your 7 free generations are used. Connect billing to continue.");return}
-  remaining--; $("remaining").textContent=remaining;
-  showToast("Demo request created. Connect an AI video provider on the backend for real generation.");
+  $("generateBtn").onclick = async () => {
+  if (!$("photoInput").files.length) {
+    showToast("Please choose a photo first.");
+    return;
+  }
+
+  if (!selectedPlatforms.size) {
+    showToast("Select at least one platform.");
+    return;
+  }
+
+  if (remaining <= 0) {
+    showToast("Your 7 free generations are used.");
+    return;
+  }
+
+  const btn = $("generateBtn");
+  const originalText = btn.textContent;
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Preparing video...";
+
+  try {
+    const formData = new FormData();
+
+    formData.append("photo", $("photoInput").files[0]);
+    formData.append("userId", "demo-user");
+    formData.append("style", $("style").value);
+    formData.append("duration", $("duration").value);
+    formData.append("camera", $("camera").value);
+    formData.append("motion", $("motion").value);
+    formData.append("prompt", $("prompt").value);
+    formData.append(
+      "platforms",
+      JSON.stringify([...selectedPlatforms])
+    );
+
+    const response = await fetch("/api/generate", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Generation failed.");
+    }
+
+    if (data.video?.videoUrl) {
+      remaining = data.freeGenerationsRemaining;
+      $("remaining").textContent = remaining;
+
+      showToast("🎉 Your AI video is ready!");
+
+      window.open(data.video.videoUrl, "_blank");
+    }
+
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "Something went wrong.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 };
 renderPlatforms();renderTemplates();
 </script>
