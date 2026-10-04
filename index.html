@@ -146,7 +146,7 @@ function selectAllPlatforms(){platforms.forEach(p=>selectedPlatforms.add(p[0]));
 function renderTemplates(){$("templateGrid").innerHTML=templates.map(t=>`<div class="card template"><div style="height:130px;border-radius:14px;background:linear-gradient(135deg,#182d52,#7c2b8d);display:grid;place-items:center;font-size:54px">${t[1]}</div><h3>${t[0]}</h3><p class="muted">${t[2]}</p><button class="btn outline" onclick="useTemplate('${t[2].replaceAll("'","")}')">Use Template</button></div>`).join("")}
 function useTemplate(text){$("prompt").value=text;showToast("Template added to your prompt.");$("create").scrollIntoView({behavior:"smooth"})}
 $("photoInput").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;$("fileName").textContent=f.name;const url=URL.createObjectURL(f);$("thumb").src=url;$("thumb").style.display="block";$("heroPreview").src=url;$("heroPreview").style.display="block";$("heroPreview").parentElement.querySelector(".play").style.display="none"});
-$("generateBtn").onclick=()=>{
+
   $("generateBtn").onclick = async () => {
   if (!$("photoInput").files.length) {
     showToast("Please choose a photo first.");
