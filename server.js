@@ -2,18 +2,20 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import "dotenv/config";
-import fs from "fs";
+import crypto from "crypto";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
-import { fal } from "@fal-ai/client";
+import Replicate from "replicate";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 const upload = multer({
-  dest: "uploads/",
+  dest: path.join(__dirname, "uploads"),
   limits: {
     fileSize: 15 * 1024 * 1024
   }
@@ -23,6 +25,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN
+});
 
 const users = new Map();
 
@@ -38,6 +44,13 @@ function getUser(userId) {
   return users.get(userId);
 }
 
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "PhotoMotion.ai server is running"
+  });
+});
+
 app.get("/api/usage/:userId", (req, res) => {
   const user = getUser(req.params.userId);
 
@@ -51,12 +64,18 @@ app.post("/api/generate", upload.single("photo"), async (req, res) => {
   let uploadedFile = null;
 
   try {
+    if (!process.env.REPLICATE_API_TOKEN) {
+      return res.status(503).json({
+        error: "AI provider is not configured."
+      });
+    }
+
     const userId = req.body.userId || "demo-user";
     const user = getUser(userId);
 
     if (!req.file) {
       return res.status(400).json({
-        error: "Please upload a photo."
+        error: "Photo is required."
       });
     }
 
@@ -64,82 +83,89 @@ app.post("/api/generate", upload.single("photo"), async (req, res) => {
 
     if (user.plan === "free" && user.freeGenerations <= 0) {
       return res.status(402).json({
-        error: "Your 7 free generations are used."
+        error: "Your 7 free generations are used. Please upgrade."
       });
     }
 
-    if (!process.env.FAL_KEY) {
-      return res.status(503).json({
-        error: "AI provider is not configured yet."
-      });
+    let platforms = ["Instagram Reels"];
+
+    if (req.body.platforms) {
+      try {
+        platforms = JSON.parse(req.body.platforms);
+      } catch {
+        return res.status(400).json({
+          error: "Invalid platforms format."
+        });
+      }
     }
-
-    fal.config({
-      credentials: process.env.FAL_KEY
-    });
-
-    const imageBuffer = fs.readFileSync(uploadedFile);
-
-    const imageBase64 = imageBuffer.toString("base64");
-
-    const mimeType = req.file.mimetype || "image/jpeg";
-
-    const imageDataUri =
-      `data:${mimeType};base64,${imageBase64}`;
-
-    const style = req.body.style || "Cinematic";
-    const camera = req.body.camera || "Cinematic";
-    const motion = req.body.motion || "Natural";
 
     const prompt =
       req.body.prompt ||
-      `Create a ${style} image-to-video animation. ` +
-      `Use ${camera} camera movement with ${motion} motion. ` +
-      `Keep the main subject natural and visually consistent.`;
+      "Create smooth cinematic motion from this image with natural movement and a slow camera push-in.";
 
-    const result = await fal.subscribe(
-      "fal-ai/vidu/image-to-video",
+    const duration =
+      String(req.body.duration || "5")
+        .replace(/\D/g, "") === "10"
+        ? 10
+        : 5;
+
+    console.log("Starting Replicate generation...");
+
+    const output = await replicate.run(
+      "runwayml/gen4-turbo",
       {
         input: {
-          prompt: prompt.slice(0, 1500),
-          image_url: imageDataUri,
-          movement_amplitude:
-            motion === "Strong"
-              ? "large"
-              : motion === "Dynamic"
-              ? "medium"
-              : motion === "Subtle"
-              ? "small"
-              : "auto"
-        },
-        logs: true
+          image: fs.createReadStream(uploadedFile),
+          prompt,
+          duration,
+          aspect_ratio: "16:9"
+        }
       }
     );
 
-    const videoUrl = result?.data?.video?.url;
+    let videoUrl = null;
 
-    if (!videoUrl) {
-      throw new Error("AI provider did not return a video URL.");
+    if (output && typeof output.url === "function") {
+      videoUrl = output.url();
+    } else if (Array.isArray(output) && output[0]) {
+      videoUrl =
+        typeof output[0].url === "function"
+          ? output[0].url()
+          : String(output[0]);
+    } else if (output) {
+      videoUrl = String(output);
     }
 
-    user.freeGenerations--;
+    if (!videoUrl) {
+      throw new Error("Replicate returned no video URL.");
+    }
 
-    const video = {
-      id: Date.now().toString(),
+    const request = {
+      id: crypto.randomUUID(),
       status: "completed",
-      videoUrl,
       prompt,
-      style,
-      camera,
-      motion,
+      style: req.body.style || "Cinematic",
+      camera: req.body.camera || "Cinematic",
+      motion: req.body.motion || "Natural",
+      duration: `${duration} seconds`,
+      platforms,
+      template: req.body.template || null,
+      videoUrl,
       createdAt: new Date().toISOString()
     };
 
-    user.videos.unshift(video);
+    if (user.plan === "free") {
+      user.freeGenerations -= 1;
+    }
+
+    user.videos.push(request);
+
+    console.log("Video generated successfully.");
 
     res.json({
-      success: true,
-      video,
+      message: "Video generated successfully.",
+      video: request,
+      videoUrl,
       freeGenerationsRemaining: user.freeGenerations
     });
 
@@ -149,14 +175,16 @@ app.post("/api/generate", upload.single("photo"), async (req, res) => {
     res.status(500).json({
       error:
         error?.message ||
-        "Video generation failed."
+        "Video generation failed. Please try again."
     });
 
   } finally {
     if (uploadedFile) {
       try {
         fs.unlinkSync(uploadedFile);
-      } catch {}
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 });
@@ -170,13 +198,9 @@ app.get("/api/videos/:userId", (req, res) => {
 });
 
 app.get("*", (req, res) => {
-  res.sendFile(
-    path.join(__dirname, "index.html")
-  );
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log(
-    `PhotoMotion.ai running on port ${process.env.PORT || 3000}`
-  );
+app.listen(PORT, () => {
+  console.log(`PhotoMotion.ai running on port ${PORT}`);
 });
